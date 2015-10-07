@@ -29,6 +29,26 @@ def chunk(nodelist, length):
     yield chunklist
 
 
+# From the list of returned metrics, only return those
+# that match the immediate query pattern.
+def truncate_nodes(query, paths):
+    count = len(query.split('.'))
+    seen = {}
+    npaths = []
+
+    for path in paths:
+        # Get the first 'count' parts of the path name.
+        qpath = '.'.join(path.split('.')[:count])
+        # Skip over duplicates.
+        if qpath in seen:
+            continue
+        # Add to the new paths list
+        seen[qpath] = 1
+        npaths.append({'leaf': (qpath == path), 'path': qpath })
+
+    return npaths
+
+
 class CyaniteLeafNode(LeafNode):
     __fetch_multi__ = 'cyanite'
 
@@ -98,6 +118,7 @@ class CyaniteFinder(object):
     def find_nodes(self, query):
         paths = requests.get(urls.paths,
                              params={'query': query.pattern}).json()
+        paths = truncate_nodes(query.pattern, paths)
         for path in paths:
             if path['leaf']:
                 yield CyaniteLeafNode(path['path'],
